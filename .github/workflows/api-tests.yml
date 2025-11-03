@@ -19,6 +19,7 @@ jobs:
         run: docker build -t graphql-api-tests .
 
       - name: Run Full Test Suite
+        id: run-tests
         continue-on-error: true
         env:
           GRAPHQL_BASE_URL: ${{ secrets.GRAPHQL_BASE_URL }}
@@ -32,7 +33,7 @@ jobs:
             -e TEST_PASSWORD="${TEST_PASSWORD}" \
             -e TEST_AUTH_TOKEN="${TEST_AUTH_TOKEN}" \
             -v ${{ github.workspace }}/target:/app/target \
-            graphql-api-tests || true
+            graphql-api-tests
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1
@@ -41,6 +42,7 @@ jobs:
           name: Test Results
           path: target/surefire-reports/*.xml
           reporter: java-junit
+          fail-on-error: false
 
       - name: Upload Test Reports
         uses: actions/upload-artifact@v4
@@ -49,3 +51,9 @@ jobs:
           name: test-reports
           path: target/surefire-reports/
           retention-days: 30
+
+      - name: Fail workflow if tests failed
+        if: steps.run-tests.outcome == 'failure'
+        run: |
+          echo "Tests failed! Check the test reports above for details."
+          exit 1
