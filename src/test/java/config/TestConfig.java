@@ -2,7 +2,7 @@ package config;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.fe;
+import java.util.Properties;
 
 /**
  * Centralized configuration management for GraphQL API tests.
@@ -37,7 +37,7 @@ public class TestConfig {
     private static final String DEFAULT_PASSWORD = "Admin@User1";
     private static final String DEFAULT_AUTH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkFkbWluVXNlcjEiLCJpYXQiOjE2OTI4NjgwMTh9.rfHb6DlO_fB8DKxxjtRSAqFvwtWSHHZDMqNMunmqfpM";
     private static final String DEFAULT_ENABLE_REQUEST_LOGGING = "false";
-    private static final String DEFAULT_ENABLE_RESPONSE_LOGGING = "true";
+    private static final String DEFAULT_ENABLE_RESPONSE_LOGGING = "false";
 
     private TestConfig() {
         loadProperties();
