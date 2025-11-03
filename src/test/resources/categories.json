@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Product Defects",
+    "description": "Test failures due to product bugs or defects",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*AssertionError.*"
+  },
+  {
+    "name": "Test Defects",
+    "description": "Test failures due to test code issues",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*(NullPointerException|IllegalArgumentException|NoSuchElementException).*"
+  },
+  {
+    "name": "Timeout Issues",
+    "description": "Tests that failed due to timeout",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*timeout.*"
+  },
+  {
+    "name": "Connection Issues",
+    "description": "Tests that failed due to connection problems",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*(Connection|Network|Socket).*"
+  },
+  {
+    "name": "Ignored Tests",
+    "description": "Tests that were skipped or ignored",
+    "matchedStatuses": ["skipped"]
+  }
+]
+

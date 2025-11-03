@@ -45,6 +45,28 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Allure TestNG Integration -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-testng</artifactId>
+            <version>${allure.version}</version>
+        </dependency>
+
+        <!-- Allure REST Assured Integration -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-rest-assured</artifactId>
+            <version>${allure.version}</version>
+        </dependency>
+
+        <!-- AspectJ Weaver for Allure -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
     </dependencies>
 
     <properties>
@@ -57,6 +79,10 @@
         <surefire.version>3.2.5</surefire.version>
         <parallel.tests>3</parallel.tests>
         <test.retry.count>1</test.retry.count>
+
+        <!-- Allure properties -->
+        <allure.version>2.25.0</allure.version>
+        <aspectj.version>1.9.21</aspectj.version>
     </properties>
 
     <build>
@@ -98,7 +124,28 @@
 
                     <!-- Retry failed tests -->
                     <rerunFailingTestsCount>${test.retry.count}</rerunFailingTestsCount>
+
+                    <!-- AspectJ Weaver for Allure -->
+                    <argLine>
+                        -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
+                    </argLine>
+
+                    <!-- Allure TestNG Listener -->
+                    <properties>
+                        <property>
+                            <name>listener</name>
+                            <value>io.qameta.allure.testng.AllureTestNg</value>
+                        </property>
+                    </properties>
                 </configuration>
+                <dependencies>
+                    <!-- AspectJ dependency for Surefire -->
+                    <dependency>
+                        <groupId>org.aspectj</groupId>
+                        <artifactId>aspectjweaver</artifactId>
+                        <version>${aspectj.version}</version>
+                    </dependency>
+                </dependencies>
             </plugin>
 
             <!-- Maven Compiler Plugin -->
@@ -127,6 +174,21 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Allure Maven Plugin for generating reports -->
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <version>2.12.0</version>
+                <configuration>
+                    <!-- Directory where allure-results are stored -->
+                    <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
+                    <!-- Directory where allure report will be generated -->
+                    <reportDirectory>${project.build.directory}/allure-report</reportDirectory>
+                    <!-- Allure report version -->
+                    <reportVersion>${allure.version}</reportVersion>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -151,8 +213,8 @@
             <properties>
                 <parallel.tests>1</parallel.tests>
                 <test.retry.count>0</test.retry.count>
-                <test.enable.request.logging>true</test.enable.request.logging>
-                <test.enable.response.logging>true</test.enable.response.logging>
+                <test.enable.request.logging>false</test.enable.request.logging>
+                <test.enable.response.logging>false</test.enable.response.logging>
             </properties>
         </profile>
 

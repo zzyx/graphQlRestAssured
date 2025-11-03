@@ -1,26 +1,46 @@
-name: GraphQL API Tests
+name: GraphQL API Tests with Allure Report
 
+# Trigger workflow on push to main/develop, pull requests, and manual dispatch
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+# Set permissions for GitHub Pages deployment
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write  # For PR comments
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  full-test-suite:
-    name: Run Full Test Suite
+  # Job 1: Run tests in Docker and generate Allure report
+  test-and-report:
+    name: Run Tests & Generate Allure Report
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # Step 1: Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper git operations
 
+      # Step 2: Build Docker Image
       - name: Build Docker Image
         run: docker build -t graphql-api-tests .
 
-      - name: Run Full Test Suite
+      # Step 3: Run Tests in Docker
+      - name: Run Full Test Suite in Docker
         id: run-tests
-        continue-on-error: true
+        continue-on-error: true  # Continue even if tests fail
         env:
           GRAPHQL_BASE_URL: ${{ secrets.GRAPHQL_BASE_URL }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
@@ -35,25 +55,128 @@ jobs:
             -v ${{ github.workspace }}/target:/app/target \
             graphql-api-tests
 
-      - name: Publish Test Results
-        uses: dorny/test-reporter@v1
+      # Step 4: Get Allure history from gh-pages branch
+      - name: Get Allure History
+        uses: actions/checkout@v4
+        if: always()
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      # Step 5: Copy Allure history to allure-results
+      - name: Copy Allure History
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -d "gh-pages/allure-history" ]; then
+            echo "✅ Copying Allure history..."
+            mkdir -p target/allure-results/history
+            cp -r gh-pages/allure-history/* target/allure-results/history/
+            echo "✅ History copied successfully"
+          else
+            echo "ℹ️ No Allure history found, this might be the first run"
+          fi
+
+      # Step 6: Generate Allure Report
+      - name: Generate Allure Report
+        uses: simple-elf/allure-report-action@master
         if: always()
         with:
-          name: Test Results
-          path: target/surefire-reports/*.xml
-          reporter: java-junit
-          fail-on-error: false
+          allure_results: target/allure-results
+          allure_report: allure-report
+          gh_pages: gh-pages
+          allure_history: allure-history
+          keep_reports: 20  # Keep last 20 reports
 
-      - name: Upload Test Reports
+      # Step 7: Upload Allure Report as artifact
+      - name: Upload Allure Report as Artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-reports
-          path: target/surefire-reports/
+          name: allure-report
+          path: allure-report/
           retention-days: 30
 
-      - name: Fail workflow if tests failed
+      # Step 8: Upload test results
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            target/surefire-reports/
+            target/allure-results/
+          retention-days: 30
+
+      # Step 9: Deploy Allure Report to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-report
+          keep_files: false  # Clean up old files
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      # Step 10: Add comment to PR with report link (for PRs only)
+      - name: Comment PR with Report Link
+        uses: actions/github-script@v7
+        if: always() && github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const reportUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}/`;
+            const testStatus = '${{ steps.run-tests.outcome }}' === 'success' ? '✅ PASSED' : '❌ FAILED';
+            const comment = `## 📊 Allure Test Report
+
+            **Test Status:** ${testStatus}
+
+            The test execution has completed. View the detailed Allure report here:
+
+            🔗 [View Allure Report](${reportUrl})
+
+            **Note:** It may take 2-5 minutes for the report to be available after deployment.
+
+            ---
+            *Report generated on: ${new Date().toUTCString()}*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      # Step 11: Fail the workflow if tests failed
+      - name: Check Test Results
         if: steps.run-tests.outcome == 'failure'
         run: |
-          echo "Tests failed! Check the test reports above for details."
+          echo "❌ Tests failed! Check the Allure report for details."
+          echo "📊 Report will be available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
           exit 1
+
+  # Job 2: Publish test summary
+  test-summary:
+    name: Publish Test Summary
+    runs-on: ubuntu-latest
+    needs: test-and-report
+    if: always()
+
+    steps:
+      - name: Download Test Results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+
+      - name: Publish TestNG Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: TestNG Test Results
+          path: test-results/surefire-reports/*.xml
+          reporter: java-junit
+          fail-on-error: false
