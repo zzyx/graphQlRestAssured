@@ -1,18 +1,13 @@
-FROM eclipse-temurin:21-jdk-jammy
+FROM maven:3.9-eclipse-temurin-25
 
 WORKDIR /app
 
-# Copy Maven wrapper and make it executable
-COPY mvnw ./
-COPY .mvn .mvn/
-RUN chmod +x mvnw
-
 # Copy pom.xml and download dependencies (for better caching)
 COPY pom.xml ./
-RUN ./mvnw dependency:go-offline -DskipTests
+RUN mvn dependency:go-offline -DskipTests
 
 # Copy source code
 COPY src/ src/
 
 # Default command runs CI profile tests
-CMD ["./mvnw", "test", "-Pci"]
+CMD ["mvn", "test", "-Pci"]
