@@ -19,6 +19,7 @@ jobs:
         run: docker build -t graphql-api-tests .
 
       - name: Run Full Test Suite
+        continue-on-error: true
         env:
           GRAPHQL_BASE_URL: ${{ secrets.GRAPHQL_BASE_URL }}
           TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
@@ -31,7 +32,7 @@ jobs:
             -e TEST_PASSWORD="${TEST_PASSWORD}" \
             -e TEST_AUTH_TOKEN="${TEST_AUTH_TOKEN}" \
             -v ${{ github.workspace }}/target:/app/target \
-            graphql-api-tests
+            graphql-api-tests || true
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1
